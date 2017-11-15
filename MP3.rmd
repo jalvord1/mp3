@@ -26,14 +26,15 @@ dbListTables(db)
 dbListFields(db, "title")
 
 #Visualizing tables as an example
+#movie_link table tells what is a sequel
 sql <- "
 SELECT *
-FROM title
+FROM kind_type
 LIMIT 0, 100;
 "
-titles <- db %>%
+type_kind_tb <- db %>%
   dbGetQuery(sql)
-View(titles)
+View(type_kind_tb)
 ```
 
 ```{r, include = FALSE}
@@ -49,8 +50,21 @@ db %>%
   dbGetQuery(sql)
 ```
 
-#How to define a sequel
+#Join movie_link with Titles
 ```{r}
-#Could we use character name? Movies where there is repition from titles?
+sql <- "
+SELECT t.id, t.title, t.production_year, t.kind_id, m.movie_id, m.linked_movie_id, m.link_type_id, l.id, l.link, t2.id, t2.title, k.id, k.kind
+FROM movie_link m
+JOIN title t ON t.id = m.movie_id
+JOIN title t2 on t2.id = m.linked_movie_id
+JOIN link_type l ON l.id = m.link_type_id
+JOIN kind_type k ON k.id = t.kind_id
+WHERE k.kind = 'movie'
+AND l.id IN (1, 2, 3, 4, 9, 10, 13)
+LIMIT 0, 100;
+"
+
+db %>%
+  dbGetQuery(sql)
 ```
 
