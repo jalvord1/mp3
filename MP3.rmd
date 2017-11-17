@@ -9,5 +9,62 @@ output: html_document
 ```{r, include = FALSE}
 library(tidyverse)
 library(ggplot2)
+
+install.packages("mdsr")
+# do NOT install RMySQL if you are on the RStudio Server
+install.packages("RMySQL")
+
 library(dplyr)
+library(mdsr)
+library(RMySQL)
+db <- dbConnect_scidb(dbname = "imdb")
+
+#Tables within IMDB database!
+dbListTables(db)
+
+#Listing variables in a table!
+dbListFields(db, "title")
+
+#Visualizing tables as an example
+#movie_link table tells what is a sequel
+sql <- "
+SELECT *
+FROM kind_type
+LIMIT 0, 100;
+"
+type_kind_tb <- db %>%
+  dbGetQuery(sql)
+View(type_kind_tb)
 ```
+
+```{r, include = FALSE}
+#Example code <- Find your fav movie!
+sql <- "
+SELECT t.title, t.production_year
+FROM title t 
+WHERE t.title LIKE '%Stick It%'
+  AND t.kind_id = 1
+ORDER BY production_year;
+"
+db %>%
+  dbGetQuery(sql)
+```
+
+#Join movie_link with Titles
+```{r}
+sql <- "
+SELECT t.id, t.title, t.production_year, t.kind_id, m.movie_id, m.linked_movie_id, m.link_type_id, l.id, l.link, t2.id, t2.title, k.id, k.kind
+FROM movie_link m
+JOIN title t ON t.id = m.movie_id
+JOIN title t2 on t2.id = m.linked_movie_id
+JOIN link_type l ON l.id = m.link_type_id
+JOIN kind_type k ON k.id = t.kind_id
+WHERE k.kind = 'movie'
+AND l.id IN (1, 2, 3, 4, 9, 10, 13)
+LIMIT 0, 100;
+"
+
+db %>%
+  dbGetQuery(sql)
+```
+
