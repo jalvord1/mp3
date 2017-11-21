@@ -23,18 +23,17 @@ db <- dbConnect_scidb(dbname = "imdb")
 dbListTables(db)
 
 #Listing variables in a table!
-dbListFields(db, "title")
+dbListFields(db, "info_type")
 
 #Visualizing tables as an example
 #movie_link table tells what is a sequel
 sql <- "
 SELECT *
-FROM kind_type
-LIMIT 0, 100;
+FROM info_type;
 "
-type_kind_tb <- db %>%
+info_type_tb <- db %>%
   dbGetQuery(sql)
-View(type_kind_tb)
+View(info_type_tb)
 ```
 
 ```{r, include = FALSE}
@@ -53,18 +52,35 @@ db %>%
 #Join movie_link with Titles
 ```{r}
 sql <- "
-SELECT t.id, t.title, t.production_year, t.kind_id, m.movie_id, m.linked_movie_id, m.link_type_id, l.id, l.link, t2.id, t2.title, k.id, k.kind
+SELECT t.id AS Movie_id1, t.title AS Title_1, t.production_year AS Production_Year, t.kind_id, m.movie_id AS Movie_id2, m.linked_movie_id, m.link_type_id, l.id AS Type_of_sequal, l.link, t2.id AS Movie_id3, t2.title AS Title_2, k.id AS Is_it_a_movie, k.kind AS Movie, i.info_type_id Gross_id, i.info AS Gross, i.movie_id AS Movie_id_4, i2.info_type_id AS Country_id, i2.info AS Country, i.movie_id AS Movie_id5
 FROM movie_link m
 JOIN title t ON t.id = m.movie_id
 JOIN title t2 on t2.id = m.linked_movie_id
 JOIN link_type l ON l.id = m.link_type_id
 JOIN kind_type k ON k.id = t.kind_id
+JOIN movie_info i ON i.movie_id = m.movie_id
+JOIN movie_info i2 ON i2.movie_id = m.movie_id
 WHERE k.kind = 'movie'
-AND l.id IN (1, 2, 3, 4, 9, 10, 13)
-LIMIT 0, 100;
+AND i.info_type_id = 107
+AND i2.info_type_id = 8
+AND l.id IN (1, 2, 3, 4, 9, 10, 13);
 "
 
-db %>%
+table_1 <- db %>%
   dbGetQuery(sql)
+```
+
+#Making a graph
+```{r}
+table_1$Gross <- sub(" .*", "", table_1$Gross)
+
+table_1_us <- table_1 %>%
+  filter(Country == "USA")
+
+table_1_us$Gross <- sub('.', '', table_1_us$Gross)
+
+# table_1_us$Gross <- substring(table_1_us$usertweet, 3)
+
+table_1_us$Gross <- as.numeric(table_1_us$Gross)
 ```
 
