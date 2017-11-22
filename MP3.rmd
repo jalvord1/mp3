@@ -49,15 +49,37 @@ db %>%
   dbGetQuery(sql)
 ```
 
-#Join movie_link with Titles
+#All of the movies that are made in US each year
 ```{r}
 sql <- "
+<<<<<<< HEAD
 SELECT t.id AS Movie_id1, t.title AS Title_1, t.production_year AS Production_Year, t.kind_id, m.movie_id AS Movie_id2, m.linked_movie_id, m.link_type_id, l.id AS Type_of_sequal, l.link, t2.id AS Movie_id3, t2.title AS Title_2, k.id AS Is_it_a_movie, k.kind AS Movie, i.info_type_id Gross_id, i.info AS Gross, i.movie_id AS Movie_id_4, i2.info_type_id AS Country_id, i2.info AS Country, i.movie_id AS Movie_id5
+=======
+SELECT count(DISTINCT t.id) as count, production_year
+FROM title t
+JOIN movie_info mi ON mi.movie_id = t.id
+WHERE production_year <= 2017
+AND kind_id = 1
+AND info_type_id = 8
+AND info LIKE '%USA%'
+GROUP BY production_year;
+"
+
+total_US_movies <- db %>%
+  dbGetQuery(sql)
+```
+
+#All of the sequels that are made in US each year
+```{r}
+sql2 <- "
+SELECT count(DISTINCT t.id) as count, t.production_year
+>>>>>>> 0459a3909d21cce15cfd487cb08cc428c6dff94f
 FROM movie_link m
 JOIN title t ON t.id = m.movie_id
 JOIN title t2 on t2.id = m.linked_movie_id
 JOIN link_type l ON l.id = m.link_type_id
 JOIN kind_type k ON k.id = t.kind_id
+<<<<<<< HEAD
 JOIN movie_info i ON i.movie_id = m.movie_id
 JOIN movie_info i2 ON i2.movie_id = m.movie_id
 WHERE k.kind = 'movie'
@@ -84,3 +106,58 @@ table_1_us$Gross <- sub('.', '', table_1_us$Gross)
 table_1_us$Gross <- as.numeric(table_1_us$Gross)
 ```
 
+=======
+JOIN movie_info mi ON mi.movie_id = t.id
+WHERE k.kind = 'movie'
+AND t.production_year <= 2017
+AND l.id IN (1, 2, 3, 4, 9, 10, 13)
+AND mi.info_type_id = 8
+AND info LIKE '%USA%'
+GROUP BY t.production_year;
+"
+
+sequel_US_movies <- db %>%
+  dbGetQuery(sql2)
+```
+
+#All of the revenue made by any US movie each year
+```{r}
+sql3 <- "
+SELECT t.id, production_year, substring_index(mi.info, '$', -1) as revenue
+FROM movie_info mi
+JOIN title t ON t.id = mi.movie_id
+WHERE production_year <= 2017
+AND kind_id = 1
+AND mi.info_type_id = 107
+AND mi.info LIKE '%USA%'
+AND mi.info NOT Like '%Non-USA%'
+AND mi.info NOT LIKE '%Worldwide%';
+"
+
+total_US_revenue <- db %>%
+  dbGetQuery(sql3)
+```
+
+#All of the revenue made by any US sequel each year
+```{r}
+sql4 <- "
+SELECT DISTINCT t.id, t.title, t.production_year, mi.info
+FROM movie_link m
+JOIN title t ON t.id = m.movie_id
+JOIN title t2 on t2.id = m.linked_movie_id
+JOIN link_type l ON l.id = m.link_type_id
+JOIN kind_type k ON k.id = t.kind_id
+JOIN movie_info mi ON mi.movie_id = t.id
+WHERE k.kind = 'movie'
+AND t.production_year <= 2017
+AND l.id IN (1, 2, 3, 4, 9, 10, 13)
+AND mi.info_type_id = 107
+AND mi.info LIKE '%USA%'
+AND mi.info NOT Like '%Non-USA%'
+AND mi.info NOT LIKE '%Worldwide%';
+"
+
+sequel_US_revenue <- db %>%
+  dbGetQuery(sql4)
+```
+>>>>>>> 0459a3909d21cce15cfd487cb08cc428c6dff94f

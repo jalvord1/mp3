@@ -1,0 +1,253 @@
+---
+title: "MP3 Final"
+author: "Julianna Alvord and Peyton Draper"
+date: "11/21/2017"
+output: 
+  pdf_document: 
+    latex_engine: xelatex
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggplot2)
+library(extrafont)
+
+#Importing new font
+font_import(pattern = '[L/l]inotype')
+
+install.packages("mdsr", repos="http://cran.rstudio.com/")
+install.packages("RMySQL", repos="http://cran.rstudio.com/")
+
+library(dplyr)
+library(mdsr)
+library(RMySQL)
+db <- dbConnect_scidb(dbname = "imdb")
+
+#Tables within IMDB database!
+dbListTables(db)
+
+#Listing variables in a table!
+dbListFields(db, "info_type")
+
+#Visualizing tables as an example
+#movie_link table tells what is a sequel
+sql <- "
+SELECT *
+FROM movie_link
+LIMIT 0, 100;
+"
+movie_link_tb <- db %>%
+  dbGetQuery(sql)
+```
+
+
+#All of the movies that are made in US each year
+```{r}
+#Grouping by production year to get count of ALL movies for each of those years
+#Only in US, only movies.
+#index put on kind of media to only search for movies
+#other indexes made
+sql <- "
+SELECT count(DISTINCT(t.id)) as count_movie, production_year
+FROM title t
+JOIN movie_info mi ON mi.movie_id = t.id
+JOIN kind_type k ON k.id = t.kind_id
+WHERE production_year <= 2017
+AND k.kind = 'movie'
+AND mi.info_type_id = 8
+AND info LIKE '%USA%'
+GROUP BY production_year;
+"
+
+total_US_movies <- db %>%
+  dbGetQuery(sql)
+```
+
+
+#All of the sequels that are made in US each year
+```{r}
+#Grouping by production year to get count of unique sequels (as we are defining) for each of those years
+#Only in US, only movies.
+#index put on kind of media to only search for movies
+#other indexes made
+sql2 <- "
+SELECT count(DISTINCT(t.id)) as count_sequals, t.production_year
+FROM movie_link m
+JOIN title t ON t.id = m.movie_id
+JOIN title t2 on t2.id = m.linked_movie_id
+JOIN link_type l ON l.id = m.link_type_id
+JOIN kind_type k ON k.id = t.kind_id
+JOIN movie_info mi ON mi.movie_id = t.id
+WHERE k.kind = 'movie'
+AND t.production_year <= 2017
+AND l.id IN (1, 2, 3, 4, 13, 14)
+AND mi.info_type_id = 8
+AND info LIKE '%USA%'
+GROUP BY t.production_year;
+"
+
+sequel_US_movies <- db %>%
+  dbGetQuery(sql2)
+```
+
+
+
+```{r, include = FALSE}
+#All of the revenue made by any US movie each year WRONG
+# sql3 <- "
+# SELECT t.id, t.title, production_year, SUM(replace(substring_index(substring_index(mi.info, '$', -1), ' ', 1), ',', '')) as revenue
+# FROM movie_info mi
+# JOIN title t ON t.id = mi.movie_id
+# WHERE production_year <= 2017
+# AND kind_id = 1
+# AND mi.info_type_id = 107
+# AND mi.info LIKE '%USA%'
+# AND mi.info NOT Like '%Non-USA%'
+# AND mi.info NOT LIKE '%Worldwide%'
+# GROUP BY production_year;
+# "
+# 
+# total_US_revenue <- db %>%
+#   dbGetQuery(sql3)
+```
+
+
+#All of the revenue made by any US sequel each year
+```{r}
+##Grouping by production year to get a sum of revenue for sequels (as we are defining) in that year
+#Only in US, only movies, only 6 categories we are defining as sequel (repeating the movie in some way)
+#index put on kind of media to only search for movies
+#Other indexes made
+sql4 <- "
+SELECT DISTINCT t.id, t.title, t.production_year, SUM(replace(substring_index(substring_index(mi.info, '$', -1), ' ', 1), ',', '')) as revenue_Sum
+FROM movie_link m
+JOIN title t ON t.id = m.movie_id
+JOIN title t2 on t2.id = m.linked_movie_id
+JOIN link_type l ON l.id = m.link_type_id
+JOIN kind_type k ON k.id = t.kind_id
+JOIN movie_info mi ON mi.movie_id = t.id
+WHERE k.kind = 'movie'
+AND t.production_year <= 2017
+AND l.id IN (1, 2, 3, 4, 13, 14)
+AND mi.info_type_id = 107
+AND mi.info LIKE '%USA%'
+AND mi.info NOT Like '%Non-USA%'
+AND mi.info NOT LIKE '%Worldwide%'
+GROUP BY t.production_year;
+"
+
+sequel_US_revenue <- db %>%
+  dbGetQuery(sql4)
+```
+
+#ALL MOVIES REVENUE
+```{r}
+#Grouping by production year to get a sum of revenue for ALL movies in that year
+#Only in US, only movies
+#index put on kind of media to only search for movies
+#other indexes made
+sql4 <- "
+SELECT DISTINCT t.id, t.title, t.production_year, SUM(replace(substring_index(substring_index(mi.info, '$', -1), ' ', 1), ',', '')) as revenue_Sum_all
+FROM movie_link m
+JOIN title t ON t.id = m.movie_id
+JOIN title t2 on t2.id = m.linked_movie_id
+JOIN link_type l ON l.id = m.link_type_id
+JOIN kind_type k ON k.id = t.kind_id
+JOIN movie_info mi ON mi.movie_id = t.id
+WHERE k.kind = 'movie'
+AND t.production_year <= 2017
+AND mi.info_type_id = 107
+AND mi.info LIKE '%USA%'
+AND mi.info NOT Like '%Non-USA%'
+AND mi.info NOT LIKE '%Worldwide%'
+GROUP BY t.production_year;
+"
+
+ALL_MOVIES_US_revenue <- db %>%
+  dbGetQuery(sql4)
+```
+
+
+
+
+```{r, include = FALSE}
+#TOTAL all movies WRONG
+# sql2 <- "
+# SELECT count(DISTINCT t.id) as count_sequals, t.production_year
+# FROM movie_link m
+# JOIN title t ON t.id = m.movie_id
+# JOIN title t2 on t2.id = m.linked_movie_id
+# JOIN link_type l ON l.id = m.link_type_id
+# JOIN kind_type k ON k.id = t.kind_id
+# JOIN movie_info mi ON mi.movie_id = t.id
+# WHERE k.kind = 'movie'
+# AND t.production_year <= 2017
+# AND mi.info_type_id = 8
+# AND info LIKE '%USA%'
+# GROUP BY t.production_year;
+# "
+# 
+# TOTAL_US_movies <- db %>%
+#   dbGetQuery(sql2)
+```
+
+#Creating the table and making graph!
+```{r, message=FALSE, warning=FALSE}
+#Joining all tables created in SQL by production year, then summarizing to get percentages rev and n for sequels
+Graph_table <- ALL_MOVIES_US_revenue %>%
+  full_join(sequel_US_revenue, by = "production_year") %>%
+  full_join(sequel_US_movies, by = "production_year") %>%
+  full_join(total_US_movies, by = "production_year") %>%
+  filter(production_year >= 1955) %>%
+  filter(production_year <2017) %>%
+  mutate(percent_rev = (revenue_Sum / revenue_Sum_all)*100, percent_seq = (count_sequals / count_movie)*100) %>%
+  group_by(production_year) %>%
+  summarise(percent_rev = (revenue_Sum / revenue_Sum_all)*100,
+            percent_seq = (count_sequals / count_movie)*100)
+
+
+#Creating the graph with two different lines connecting all points then a smooth line overlaid on top
+#Changed font on this graph
+ggplot(Graph_table, aes(production_year, percent_rev)) + 
+  geom_line(aes(y = percent_rev, colour = "percent_rev"), size = 0.3) +
+  geom_smooth(aes(y = percent_rev, colour = "percent_rev"), se = FALSE, size = 1.3) +
+  geom_line(aes(y = percent_seq, colour = "percent_seq"), size = 0.3) +
+  geom_smooth(aes(y = percent_seq, colour = "percent_seq"), se = FALSE, size = 1.3) +
+  theme(legend.title = element_blank(), panel.border = element_blank(), panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(), axis.line = element_line(colour = "black", size = 0.2), axis.text.x = element_text(colour="grey20",size=10, family = "Palatino Linotype"), axis.text.y = element_text(color = "grey20", size =10, family = "Palatino Linotype"), axis.title.x = element_text(vjust=-.55, family = "Palatino Linotype" ), axis.title.y = element_text(vjust = .55, family = "Palatino Linotype"), plot.title = element_text(hjust = 0.5, family = "Palatino Linotype"), panel.background = element_rect(fill = 'white'), legend.text = element_text(family = "Palatino Linotype", size = 10)) +
+  #Changed font on this graph
+  labs(x="Year", y="Percentage") +
+  scale_y_discrete(limits = c(0, 5, 10, 15, 19),
+                   labels = c("0%", "5%", "10%", "15%", "19%")) +
+  scale_x_discrete(limits = c(1960, 1980, 2000, 2017),
+                   labels = c("1960", "1980", "2000", "2017")) +
+  ggtitle("More Sequels Than Ever? Only in the Studios Making $$$") +
+  scale_color_manual(values = c("goldenrod3", "red4"),
+                    breaks=c("percent_rev", "percent_seq"),
+                    labels=c("Sequel Revenue Percentage", "N of Sequels Percentage"))
+```
+
+In our data graphic, we have plotted two lines that represent two different metrics. The red line represents the percentage of all US movies made in a year that are sequels (which we are loosly defining based on categories from IMDB which include: "Follows", "Followed By", "Remake of", "Remade as", "Version of", and "Similar to"), while the yellow line represents the percentage of all revenue made from US movies that are from sequels (defined in the same way). We chose to look at these figures as a percentage due to what factors percentages can neutralize. For example, if we were to look at whether the raw number of sequels was increasing over time, it may not tell us much at all if we don’t take into account the growth of the entire movie market. An increase in sequels could be read that sequels are taking up a larger space in the market, which would be misleading if the entire market was growing at the same rate (or even more drastic, the growth in sequels is not growing as fast as the entire market and is instead becoming a stagnant subset of it). Looking at this percentage, however, allows us to directly compare whether sequels are becoming a more dominant force within movies.
+  
+Likewise, the use of this percentage method allows us to not worry about inflation when dealing with revenue. We could’ve tried to look at the raw revenue numbers of these movies over time, but if we were to see an increase in revenue over time, an increase in inflation over time could be a direct correlation to that. Because there is nothing in the imdb database that could help us account for inflation, we have turned to this percentage so that we can hopefully tell a more accurate story. So that we do not have to worry about the effects of inflation, we are instead approaching it from examining the percentage of movie revenue that comes from sequels over time, which will allow us to see the effects sequels have in the market over time.
+        	
+Another important choice we made in regard to our graph was the timeline we were going to work with. The imdb database seemed to have unreliable results for the movies produced in much earlier years, with some years having very small sample sizes to work with. We thus chose 1955 as our cutoff for the earliest year to look at, since it is at about that year that the number of movies per year present in the database seemed to reach a number that could be statistically reliable.
+        	
+Our data graphic shows the opposite of what you would typically expect upon first glance- as sequel revenues take up a larger space in the market (represented by increases in the yellow line), the number of movies that are sequels should increase within the next couple of years as well, since movie companies will want to capitalize on a subset of movies that are performing well and bringing in money. From about 1980-1985 onwards, however, we do not see this correlation occur in our graphic. Instead, as the line representing sequel revenue increases, the line that represents number of sequels decreases. To understand how this unexpected result could have occurred, one would have to look more into the nature of the US movie market.
+        	
+The first point to learn from here is the rise of the independent film. Steven Spielberg accredits this to Hollywood “squeezing the middle class out of Hollywood and only allowing the $70m-plus films or the $10m-minus films [to be made]” (Shone 2015), leaving the two major groups that we are analyzing now- the indie films and the major studio films. As the average cost of studio films rises, individuals are having harder times pulling off the mid-budget movie (a kind of movie the studios want nothing to do with- they’d rather pay more money and take that risk in order to market to a larger audience). The middle is then thinned out, with more movies becoming lower-budgeted, independent films.
+        	
+Another aspect of this topic to look at is the kind of oligopoly that major film studios have over the movie market, and how that affects revenues. As the mid-budget movies get weeded out and more and more indie films are made, major films acquire more of the market space. These are the types of films with large budgets that are able to then acquire large revenues through their advertising expenditures and marketing to worldwide audiences. Indie films, on the other hand, make significantly less. This could be the reason why, despite indie films being able to receive critical acclaim (like dominating awards such as the Best Oscar Picture in recent times), they are nowhere in the running for best box office hits- they just don’t reach the same scale of audience.
+        	
+Understanding these two points then allows our data graphic to actually make sense, despite the original hypothesis. The percentage of movies that are sequels declines as more and more indie films are made, and this is because it doesn’t make sense financially for them to be making sequels when they aren’t reaching the same audience and making the same revenues as major films. These major films have seen how profitable it can be for themselves to make all sorts of sequels despite their costs, however, with the surge of superhero worlds and book-adapted series dominating box offices in recent years. Like that, the graph is explained- the actual number of sequels declines as multitudes of indie producers do not have the means of creating them, while the big film companies capitalize on this subset of the market and make bank doing so, creating franchises that appeal to the masses.
+        	
+Lastly, after understanding our graphic, some self-critique and clarification needs to be made. It is understood that even though we tried to eliminate as much error as possible, there are still parts of our data that can be worked on. Focusing on revenue instead of profit, for example, could be questioned when profit is a better indicator of success. Revenue could potentially not mean much if costs are just as high, whereas profit indicates pure positive gain. Working with the exclusions that would have given us profit would have made the data messy, however, since not all movies had both given by imdb.
+ 
+https://github.com/jalvord1/mp3
+
+#References
+- Cieply, Michael. “Down in Front? Not in Hollywood.” The New York Times, The New York Times, 25 Apr. 2009, www.nytimes.com/2009/04/26/business/media/26scene.html.
+
+- Shone, Tom. “The unstoppable rise of independent films.” Financial Times, 20 Feb. 2015, www.ft.com/content/bc58eede-b770-11e4-8807-00144feab7de.
